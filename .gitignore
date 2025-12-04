@@ -1,0 +1,48 @@
+# =========================
+# Node / Package Manager
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# =========================
+# Build / Output
+# =========================
+dist/
+build/
+out/
+
+# =========================
+# Vite / Webpack / Parcel Cache
+# =========================
+.vite/
+.parcel-cache/
+.cache/
+
+# =========================
+# Environment Variables
+# =========================
+.env
+.env.local
+.env.production
+.env.development
+
+# =========================
+# OS / Editor
+# =========================
+.DS_Store
+Thumbs.db
+
+.vscode/
+!.vscode/extensions.json
+
+.idea/
+
+# =========================
+# Temporary Files
+# =========================
+*.log
+*.tmp
+*.temp
