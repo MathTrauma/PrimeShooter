@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>소수 복셀 슈터</title>
+    <meta name="description" content="Three.js Voxel Shooter Game" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #111;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Mobile Controls Visibility */
+        #mobile-controls {
+            display: none;
+        }
+
+        @media (max-width: 1024px) {
+            #mobile-controls {
+                display: flex;
+            }
+        }
+
+        .control-btn {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(4px);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            user-select: none;
+            touch-action: none;
+        }
+
+        .control-btn:active {
+            background: rgba(8, 145, 178, 0.6);
+        }
+    </style>
+    <script type="importmap">
+{
+  "imports": {
+    "three": "https://aistudiocdn.com/three@^0.181.2",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/"
+  }
+}
+</script>
+</head>
+
+<body>
+    <!-- Game Container -->
+    <div id="game-container" class="absolute inset-0 bg-black"></div>
+
+    <!-- HUD Layer -->
+    <div id="ui-hud"
+        class="hidden absolute top-0 left-0 w-full h-full p-4 pointer-events-none flex flex-col justify-between">
+
+        <!-- Top Bar -->
+        <div class="flex justify-between items-start w-full">
+            <div class="bg-black/50 backdrop-blur-md p-4 rounded-lg border border-cyan-500/50">
+                <h2 class="text-xl font-bold text-cyan-400">점수</h2>
+                <p id="score-value" class="text-4xl font-mono text-white">0</p>
+            </div>
+            <div
+                class="hidden md:block bg-black/50 backdrop-blur-md p-4 rounded-lg text-right text-xs text-gray-400 max-w-md">
+                <p>조작: <span class="text-white font-bold">W A S D</span> 이동</p>
+                <p><span class="text-white font-bold">SPACE</span> 발사</p>
+                <div class="mt-2 border-t border-gray-600 pt-2">
+                    <p class="text-red-400 font-bold">규칙:</p>
+                    <p><span class="font-bold underline">소수(Prime)</span>는 쏘지 마세요 (예: 7, 13)</p>
+                    <p><span class="font-bold underline">소수의 2배</span>도 쏘지 마세요 (예: 14, 26)</p>
+                    <p class="text-green-400">나머지 합성수는 모두 파괴하세요!</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Controls (Bottom Layer) -->
+        <div id="mobile-controls" class="w-full h-48 pointer-events-auto flex justify-between items-end pb-4 px-2">
+            <!-- D-Pad -->
+            <div class="relative w-40 h-40">
+                <div class="absolute top-0 left-1/3 w-1/3 h-1/3 p-1">
+                    <div class="control-btn w-full h-full" data-key="w">▲</div>
+                </div>
+                <div class="absolute bottom-0 left-1/3 w-1/3 h-1/3 p-1">
+                    <div class="control-btn w-full h-full" data-key="s">▼</div>
+                </div>
+                <div class="absolute top-1/3 left-0 w-1/3 h-1/3 p-1">
+                    <div class="control-btn w-full h-full" data-key="a">◀</div>
+                </div>
+                <div class="absolute top-1/3 right-0 w-1/3 h-1/3 p-1">
+                    <div class="control-btn w-full h-full" data-key="d">▶</div>
+                </div>
+            </div>
+
+            <!-- Fire Button -->
+            <div class="w-24 h-24 mb-4 mr-4">
+                <div class="control-btn w-full h-full rounded-full bg-red-900/50 border-red-500 text-red-200"
+                    data-key="space">발사</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menu Overlay -->
+    <div id="ui-menu"
+        class="hidden absolute inset-0 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm z-10 px-4">
+        <h1
+            class="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-purple-500 mb-8 tracking-tighter filter drop-shadow-lg text-center">
+            PRIME VOXEL
+        </h1>
+        <div class="bg-gray-800 p-6 md:p-8 rounded-xl border border-gray-700 shadow-2xl max-w-lg text-center w-full">
+            <p class="text-lg text-gray-300 mb-6 word-keep-all">
+                복셀 우주선을 조종하여 합성수들을 파괴하세요.
+            </p>
+            <div class="bg-red-900/30 p-4 rounded mb-6 text-left text-sm border-l-4 border-red-500">
+                <p class="font-bold text-red-400 mb-2">경고: 아래 대상은 공격하지 마세요!</p>
+                <ul class="list-disc pl-5 space-y-1 text-gray-300">
+                    <li>소수 (Prime Number)</li>
+                    <li>소수의 2배수 (2 × Prime)</li>
+                </ul>
+            </div>
+            <button id="btn-start"
+                class="w-full md:w-auto px-8 py-3 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded shadow-[0_0_20px_rgba(8,145,178,0.6)] transition-all transform hover:scale-105 active:scale-95 cursor-pointer">
+                미션 시작
+            </button>
+        </div>
+    </div>
+
+    <!-- Game Over Overlay -->
+    <div id="ui-gameover"
+        class="hidden absolute inset-0 flex flex-col items-center justify-center bg-red-900/90 backdrop-blur-sm z-10 px-4">
+        <h1 class="text-5xl md:text-6xl font-black text-white mb-2 tracking-widest uppercase">실패</h1>
+        <p id="game-over-reason" class="text-xl md:text-2xl text-red-200 mb-8 text-center word-keep-all">이유를 알 수 없음</p>
+
+        <div class="bg-black/40 p-6 rounded-lg mb-8 text-center border border-white/10 min-w-[200px]">
+            <span class="block text-sm text-gray-400 uppercase tracking-widest mb-1">최종 점수</span>
+            <span id="final-score" class="text-5xl font-mono font-bold text-white">0</span>
+        </div>
+
+        <button id="btn-retry"
+            class="px-8 py-3 bg-white text-red-900 font-bold rounded hover:bg-gray-200 transition-all shadow-xl transform hover:scale-105 cursor-pointer">
+            재시도
+        </button>
+
+        <button id="btn-retry"
+            class="px-8 py-3 bg-white text-red-900 font-bold rounded hover:bg-gray-200 transition-all shadow-xl transform hover:scale-105 cursor-pointer">
+            <a href="https://www.mathtrauma.github.io">홈으로</a>
+        </button>
+    </div>
+
+    <script type="module" src="./index.js"></script>
+</body>
+
+</html>
