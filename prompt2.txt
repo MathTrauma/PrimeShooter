@@ -4,3 +4,13 @@
 3. 적에게 할당된 소인수분해했을 때 등장하는 소인수의 개수만큼 맞아야 파괴되도록 한다.
     이때, 색이 변하게 해줘. 가능하면 깨지기 직전(한 대 더 맞으면 깨지는 상태)에는 bloom(emmision) 효과 넣어줘.
 4. 적들 중 일부는 통통 튀면서 다가오도록 한다.
+
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.181.2/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.181.2/examples/jsm/"
+        }
+    }
+    </script>
