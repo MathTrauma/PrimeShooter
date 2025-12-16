@@ -1,5 +1,4 @@
-//mport { GameEngine } from './scripts/app1.js';
-import { GameEngine } from './scripts/app2.js';
+import { GameEngine } from './scripts/GameEngine.js';
 
 
 // DOM Elements

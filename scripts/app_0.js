@@ -25,10 +25,11 @@ export class GameEngine {
     this.BOUNDS_Z_MAX = 10;
     this.BULLET_SPEED = 1.2;
     
-    this.BASE_ENEMY_SPEED = 0.2;
+    this.BASE_ENEMY_SPEED = 0.16;
     this.BASE_SPAWN_RATE = 1200;
     this.lastSpawnTime = 0;
     this.lastScenerySpawnTime = 0;
+    this.lastTimestamp = 0;
 
     // Added: Game duration constant (60 seconds)
     this.GAME_DURATION = 60;
@@ -40,6 +41,12 @@ export class GameEngine {
     this.camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 0.1, 200);
     this.camera.position.set(0, 15, 25);
     this.camera.lookAt(0, 0, -10);
+
+    // 추가된 부분
+    this.cameraOffset = new THREE.Vector3(0, 10, 10);
+    this.cameraLookAtOffset = new THREE.Vector3(0, 0, -5);
+    this.cameraDamping = 0.08;
+    //
 
     this.renderer = new THREE.WebGLRenderer({ antialias: true });
     this.renderer.setSize(container.clientWidth, container.clientHeight);
@@ -81,17 +88,17 @@ export class GameEngine {
     canvas.height = 256;
     const ctx = canvas.getContext('2d');
     if (ctx) {
-        ctx.fillStyle = 'rgba(0,0,0,0)'; // Transparent background
-        ctx.clearRect(0,0, 1024, 256);
-        
-        // Glow effect
-        ctx.shadowColor = "#00ffff";
-        ctx.shadowBlur = 20;
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 150px monospace";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText("MathTrauma", 512, 128);
+      ctx.fillStyle = 'rgba(0,0,0,0)'; // Transparent background
+      ctx.clearRect(0,0, 1024, 256);
+      
+      // Glow effect
+      ctx.shadowColor = "#00ffff";
+      ctx.shadowBlur = 20;
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 150px monospace";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("MathTrauma", 512, 128);
     }
     const texture = new THREE.CanvasTexture(canvas);
     const material = new THREE.MeshBasicMaterial({ map: texture, transparent: true, opacity: 0.8 });
@@ -171,7 +178,8 @@ export class GameEngine {
 
     this.callbacks.onScoreUpdate(0);
     this.callbacks.onTimeUpdate(this.GAME_DURATION); // Initialize timer display
-    this.animate();
+    this.lastTimestamp = 0;
+    requestAnimationFrame(this.boundAnimate);
   }
 
   stopGame() {
@@ -181,6 +189,7 @@ export class GameEngine {
 
   shoot() {
     if (!this.isRunning) return;
+
     const now = Date.now();
     if (now - this.lastShotTime < 150) return;
 
@@ -253,10 +262,10 @@ export class GameEngine {
     }
   }
 
-  updateScenery(speed) {
+  updateScenery(speed, deltaTime) {
     for (let i = this.scenery.length - 1; i >= 0; i--) {
       const s = this.scenery[i];
-      s.mesh.position.z += speed;
+      s.mesh.position.z += speed * deltaTime;
       if (s.mesh.position.z > 20) {
         this.scene.remove(s.mesh);
         this.scenery.splice(i, 1);
@@ -346,20 +355,56 @@ export class GameEngine {
     }
   }
 
-  updatePlayer() {
-    if (this.keys.w && this.player.position.z > this.BOUNDS_Z_MIN) this.player.position.z -= this.PLAYER_SPEED;
-    if (this.keys.s && this.player.position.z < this.BOUNDS_Z_MAX) this.player.position.z += this.PLAYER_SPEED;
-    if (this.keys.a && this.player.position.x > -this.BOUNDS_X) this.player.position.x -= this.PLAYER_SPEED;
-    if (this.keys.d && this.player.position.x < this.BOUNDS_X) this.player.position.x += this.PLAYER_SPEED;
+  updatePlayer(deltaTime) {
+    const speed = this.PLAYER_SPEED * deltaTime;
+    if (this.keys.w && this.player.position.z > this.BOUNDS_Z_MIN) this.player.position.z -= speed;
+    if (this.keys.s && this.player.position.z < this.BOUNDS_Z_MAX) this.player.position.z += speed;
+    if (this.keys.a && this.player.position.x > -this.BOUNDS_X) this.player.position.x -= speed;
+    if (this.keys.d && this.player.position.x < this.BOUNDS_X) this.player.position.x += speed;
 
-    this.player.rotation.z = THREE.MathUtils.lerp(this.player.rotation.z, (Number(this.keys.a) - Number(this.keys.d)) * 0.3, 0.1);
+    const lerpFactor = 1 - Math.pow(0.9, deltaTime);
+    this.player.rotation.z =
+      THREE.MathUtils.lerp(this.player.rotation.z, (Number(this.keys.a) - Number(this.keys.d)) * 0.3, lerpFactor);
+
+    // Update camera to follow player with damping
+    this.updateCamera(deltaTime);
   }
 
-  updateBullets() {
+  updateCamera(deltaTime) {
+    // Target camera position based on player position
+    const targetCameraPos = new THREE.Vector3(
+      this.player.position.x + this.cameraOffset.x,
+      this.cameraOffset.y,
+      this.player.position.z + this.cameraOffset.z
+    );
+
+    // Target look-at position based on player position
+    const targetLookAt = new THREE.Vector3(
+      this.player.position.x + this.cameraLookAtOffset.x,
+      this.cameraLookAtOffset.y,
+      this.player.position.z + this.cameraLookAtOffset.z
+    );
+
+    // Frame-rate independent damping
+    const lerpFactor = 1 - Math.pow(1 - this.cameraDamping, deltaTime);
+
+    // Smoothly interpolate camera position
+    this.camera.position.lerp(targetCameraPos, lerpFactor);
+
+    // Smoothly interpolate camera look-at
+    const currentLookAt = new THREE.Vector3();
+    this.camera.getWorldDirection(currentLookAt);
+    currentLookAt.multiplyScalar(10).add(this.camera.position);
+
+    currentLookAt.lerp(targetLookAt, lerpFactor);
+    this.camera.lookAt(currentLookAt);
+  }
+
+  updateBullets(deltaTime) {
     for (let i = this.bullets.length - 1; i >= 0; i--) {
       const b = this.bullets[i];
-      b.mesh.position.add(b.velocity);
-      
+      b.mesh.position.addScaledVector(b.velocity, deltaTime);
+
       if (b.mesh.position.z < -100) {
         this.scene.remove(b.mesh);
         this.bullets.splice(i, 1);
@@ -367,13 +412,12 @@ export class GameEngine {
     }
   }
 
-  updateEnemies() {
+  updateEnemies(deltaTime) {
     const playerBox = new THREE.Box3().setFromObject(this.player);
 
     for (let i = this.enemies.length - 1; i >= 0; i--) {
       const e = this.enemies[i];
-      
-      e.mesh.position.z += e.speed;
+      e.mesh.position.z += e.speed * deltaTime;
 
       if (e.isBouncing) {
          const time = Date.now() * 0.005;
@@ -399,10 +443,9 @@ export class GameEngine {
 
       for (let j = this.bullets.length - 1; j >= 0; j--) {
         const b = this.bullets[j];
-        
+
         const bulletBox = new THREE.Box3().setFromObject(b.mesh);
-        bulletBox.min.y = -10;
-        bulletBox.max.y = 20;
+        bulletBox.min.z -= this.BULLET_SPEED * deltaTime;
 
         if (bulletBox.intersectsBox(enemyBox)) {
           this.scene.remove(b.mesh);
@@ -475,13 +518,13 @@ export class GameEngine {
     }
   }
 
-  updateParticles() {
+  updateParticles(deltaTime) {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
-      p.position.add(p.userData.vel);
-      p.rotation.x += 0.2;
-      p.rotation.y += 0.2;
-      p.scale.multiplyScalar(0.9);
+      p.position.addScaledVector(p.userData.vel, deltaTime);
+      p.rotation.x += 0.2 * deltaTime;
+      p.rotation.y += 0.2 * deltaTime;
+      p.scale.multiplyScalar(Math.pow(0.9, deltaTime));
 
       if (p.scale.x < 0.05) {
         this.scene.remove(p);
@@ -490,12 +533,17 @@ export class GameEngine {
     }
   }
 
-  animate() {
+  animate(timestamp) {
     if (!this.isRunning) return;
+
+    // Delta time calculation (normalized to 60fps: 16.67ms = 1.0)
+    if (this.lastTimestamp === 0) this.lastTimestamp = timestamp;
+    const deltaTime = Math.min((timestamp - this.lastTimestamp) / 16.67, 3); // Cap at 3 to prevent huge jumps
+    this.lastTimestamp = timestamp;
 
     const now = Date.now();
     const elapsedSeconds = (now - this.gameStartTime) / 1000;
-    
+
     // Added: Check time limit
     const timeLeft = this.GAME_DURATION - elapsedSeconds;
     this.callbacks.onTimeUpdate(timeLeft);
@@ -509,20 +557,20 @@ export class GameEngine {
         }
         return;
     }
-    
+
     const currentSpeed = this.BASE_ENEMY_SPEED + (elapsedSeconds * 0.015);
-    
+
     const currentSpawnRate = Math.max(300, this.BASE_SPAWN_RATE - (elapsedSeconds * 10));
 
-    this.updatePlayer();
-    
+    this.updatePlayer(deltaTime);
+
     this.spawnEnemy(currentSpeed, currentSpawnRate);
     this.spawnScenery();
-    this.updateScenery(currentSpeed);
-    
-    this.updateBullets();
-    this.updateEnemies();
-    this.updateParticles();
+    this.updateScenery(currentSpeed, deltaTime);
+
+    this.updateBullets(deltaTime);
+    this.updateEnemies(deltaTime);
+    this.updateParticles(deltaTime);
 
     this.renderer.render(this.scene, this.camera);
     this.animationId = requestAnimationFrame(this.boundAnimate);
