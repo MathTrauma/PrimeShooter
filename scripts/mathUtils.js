@@ -1,3 +1,4 @@
+
 export const isPrime = (num) => {
   if (num <= 1) return false;
   if (num <= 3) return true;
@@ -30,28 +31,32 @@ export const generateTargetNumber = () => {
 export const getPrimeFactorCount = (num) => {
     let count = 0;
     let n = num;
-    
+
     // Handle edge cases
     if (n <= 1) return 1;
 
-    // Count factors of 2
-    while (n % 2 === 0) {
+    // Count if 2 is a factor (only count once)
+    if (n % 2 === 0) {
       count++;
-      n = n / 2;
-    }
-    
-    // Count odd factors
-    for (let i = 3; i * i <= n; i += 2) {
-      while (n % i === 0) {
-        count++;
-        n = n / i;
+      while (n % 2 === 0) {
+        n = n / 2;
       }
     }
-    
-    // If n > 2, remaining n is prime (e.g. the last factor)
+
+    // Count distinct odd factors
+    for (let i = 3; i * i <= n; i += 2) {
+      if (n % i === 0) {
+        count++;
+        while (n % i === 0) {
+          n = n / i;
+        }
+      }
+    }
+
+    // If n > 2, remaining n is prime (e.g. the last distinct factor)
     if (n > 2) {
       count++;
     }
-    
+
     return count;
 };

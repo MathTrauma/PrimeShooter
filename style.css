@@ -63,6 +63,12 @@ html, body {
     gap: 16px;
 }
 
+@media (max-width: 768px) {
+    .hud-stats {
+        gap: 8px;
+    }
+}
+
 /* UI Components (Glassmorphism) */
 .glass-panel {
     background: rgba(0, 0, 0, 0.5);
@@ -71,6 +77,12 @@ html, body {
     padding: 16px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+@media (max-width: 768px) {
+    .glass-panel {
+        padding: 8px 12px;
+    }
 }
 
 .panel-cyan {
@@ -100,6 +112,12 @@ h2 {
     margin: 0;
     font-size: 1.25rem;
     font-weight: bold;
+}
+
+@media (max-width: 768px) {
+    h2 {
+        font-size: 0.875rem;
+    }
 }
 
 .text-cyan {
@@ -135,6 +153,12 @@ h2 {
     font-size: 2.25rem;
     font-family: monospace;
     color: white;
+}
+
+@media (max-width: 768px) {
+    .value-text {
+        font-size: 1.5rem;
+    }
 }
 
 /* Mobile Controls */
